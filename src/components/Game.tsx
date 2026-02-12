@@ -12,8 +12,17 @@ export default function Game() {
 
     // Scene — bright Chicago daytime
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x7ec8e3); // clear midwest sky
-    scene.fog = new THREE.Fog(0x7ec8e3, 60, 180);
+    scene.fog = new THREE.Fog(0x2a1a3a, 80, 200);
+
+    // Panoramic city background
+    const bgTexture = new THREE.TextureLoader().load("/backgrounds/chiraq.jpg");
+    bgTexture.wrapS = THREE.RepeatWrapping;
+    const bgCylinder = new THREE.Mesh(
+      new THREE.CylinderGeometry(150, 150, 120, 64, 1, true),
+      new THREE.MeshBasicMaterial({ map: bgTexture, side: THREE.BackSide, fog: false })
+    );
+    bgCylinder.position.y = 30;
+    scene.add(bgCylinder);
 
     // Camera - low, slightly angled third person
     const camera = new THREE.PerspectiveCamera(
@@ -62,7 +71,7 @@ export default function Game() {
     scene.add(road);
 
     // Yellow center double line (Chicago style)
-    for (let i = -10; i < 80; i++) {
+    for (let i = -20; i < 80; i++) {
       const lineGeom = new THREE.PlaneGeometry(0.1, 4);
       const lineMat = new THREE.MeshStandardMaterial({ color: 0xddcc00 });
       const lineL = new THREE.Mesh(lineGeom, lineMat);
@@ -76,7 +85,7 @@ export default function Game() {
     }
 
     // White dashed lane markings
-    for (let i = -10; i < 60; i++) {
+    for (let i = -20; i < 60; i++) {
       const markGeom = new THREE.PlaneGeometry(0.15, 2.5);
       const markMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
       for (const lx of [-3.5, 3.5]) {
@@ -141,105 +150,172 @@ export default function Game() {
       }
     }
 
-    function createTallBuilding(x: number, z: number, side: number) {
+    function createSkyscraper(x: number, z: number, side: number) {
       const group = new THREE.Group();
-      const w = 5 + Math.random() * 4;
-      const h = 15 + Math.random() * 30;
-      const d = 6 + Math.random() * 5;
-      const color = Math.random() > 0.5
-        ? brickColors[Math.floor(Math.random() * brickColors.length)]
-        : stoneColors[Math.floor(Math.random() * stoneColors.length)];
+      const w = 6 + Math.random() * 3;
+      const h = 25 + Math.random() * 20;
+      const d = 6 + Math.random() * 3;
+      const glassColors = [0x334455, 0x2a3a4a, 0x3a4a5a, 0x1a2a3a];
+      const frameColors = [0x222222, 0x333344, 0x444455, 0x1a1a2a];
 
+      const color = frameColors[Math.floor(Math.random() * frameColors.length)];
+      const glass = glassColors[Math.floor(Math.random() * glassColors.length)];
+
+      // Main body
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
         new THREE.MeshStandardMaterial({ color })
       );
       body.position.set(0, h / 2, 0);
       body.castShadow = true;
-      body.receiveShadow = true;
       group.add(body);
 
-      addWindows(group, w, h, d, 0, side);
+      // Glass curtain wall (road-facing)
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: glass,
+        emissive: 0x112233,
+        emissiveIntensity: 0.15,
+        transparent: true,
+        opacity: 0.8,
+      });
+      const rows = Math.floor(h / 2.5);
+      const cols = Math.floor(w / 1.4);
+      const winGeom = new THREE.PlaneGeometry(0.9, 1.8);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const win = new THREE.Mesh(winGeom, glassMat);
+          win.position.set(
+            -w / 2 + 0.7 + c * (w / cols),
+            2 + r * 2.5,
+            side > 0 ? -d / 2 - 0.01 : d / 2 + 0.01
+          );
+          if (side < 0) win.rotation.y = Math.PI;
+          group.add(win);
+        }
+      }
 
-      // Cornice at top
+      // Cornice
       const cornice = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.4, 0.4, d + 0.4),
-        new THREE.MeshStandardMaterial({ color: 0x777777 })
+        new THREE.BoxGeometry(w + 0.3, 0.5, d + 0.3),
+        new THREE.MeshStandardMaterial({ color: 0x555555 })
       );
       cornice.position.set(0, h, 0);
       group.add(cornice);
 
-      // Water tower on some tall ones
-      if (h > 30 && Math.random() > 0.5) {
-        const tankMat = new THREE.MeshStandardMaterial({ color: 0x8B7355 });
-        const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 8), tankMat);
-        tank.position.set(0, h + 2.5, 0);
-        group.add(tank);
-        // Legs
-        for (const ox of [-0.5, 0.5]) {
-          for (const oz of [-0.5, 0.5]) {
-            const leg = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.06, 0.06, 2, 4),
-              new THREE.MeshStandardMaterial({ color: 0x444444 })
-            );
-            leg.position.set(ox, h + 1, oz);
-            group.add(leg);
-          }
-        }
+      // Rooftop AC / mechanical
+      if (Math.random() > 0.4) {
+        const ac = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 1.2, 2),
+          new THREE.MeshStandardMaterial({ color: 0x666666 })
+        );
+        ac.position.set(0, h + 0.6, 0);
+        group.add(ac);
       }
+
+      // Front door (glass revolving door look)
+      const doorFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 2.8, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0x444444 })
+      );
+      doorFrame.position.set(0, 1.4, side > 0 ? -d / 2 - 0.08 : d / 2 + 0.08);
+      group.add(doorFrame);
+      const doorGlass = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.3, 2.5),
+        new THREE.MeshStandardMaterial({ color: 0x88bbcc, transparent: true, opacity: 0.5 })
+      );
+      doorGlass.position.set(0, 1.4, side > 0 ? -d / 2 - 0.1 : d / 2 + 0.1);
+      if (side < 0) doorGlass.rotation.y = Math.PI;
+      group.add(doorGlass);
 
       group.position.set(x + side * (w / 2 + 0.5), 0, z);
       scene.add(group);
       return { w, d };
     }
 
-    function createRestaurant(x: number, z: number, side: number) {
+    function createApartment(x: number, z: number, side: number) {
       const group = new THREE.Group();
-      const w = 6;
-      const h = 4;
+      const w = 6 + Math.random() * 2;
       const d = 6;
+      const floorH = 3.2;
+      const floors = 3;
+      const h = floorH * floors;
 
-      // Building
+      const color = brickColors[Math.floor(Math.random() * brickColors.length)];
+
+      // Main body
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({ color: 0x8B0000 }) // dark red brick
+        new THREE.MeshStandardMaterial({ color })
       );
       body.position.set(0, h / 2, 0);
       body.castShadow = true;
       group.add(body);
 
-      // Big front window
-      const frontWin = new THREE.Mesh(
-        new THREE.PlaneGeometry(w - 1.5, 2.2),
-        new THREE.MeshStandardMaterial({ color: 0x88ccdd, transparent: true, opacity: 0.5 })
+      // Windows per floor
+      addWindows(group, w, h, d, 0, side);
+
+      // Triangular prism roof
+      const roofShape = new THREE.Shape();
+      roofShape.moveTo(-w / 2 - 0.3, 0);
+      roofShape.lineTo(0, 2.5);
+      roofShape.lineTo(w / 2 + 0.3, 0);
+      roofShape.lineTo(-w / 2 - 0.3, 0);
+      const roofGeom = new THREE.ExtrudeGeometry(roofShape, {
+        depth: d + 0.3,
+        bevelEnabled: false,
+      });
+      const roofColors = [0x6b3a2a, 0x5a2a1a, 0x7a4a3a, 0x4a3020];
+      const roof = new THREE.Mesh(
+        roofGeom,
+        new THREE.MeshStandardMaterial({
+          color: roofColors[Math.floor(Math.random() * roofColors.length)]
+        })
       );
-      frontWin.position.set(0, 2.2, side > 0 ? -d / 2 - 0.01 : d / 2 + 0.01);
-      if (side < 0) frontWin.rotation.y = Math.PI;
-      group.add(frontWin);
+      roof.position.set(0, h, -(d + 0.3) / 2);
+      roof.castShadow = true;
+      group.add(roof);
 
-      // Awning — red & white striped
-      const awningGeom = new THREE.BoxGeometry(w + 0.5, 0.15, 1.5);
-      const awningMat = new THREE.MeshStandardMaterial({ color: 0xcc2222 });
-      const awning = new THREE.Mesh(awningGeom, awningMat);
-      awning.position.set(0, 3.5, side > 0 ? -d / 2 - 0.8 : d / 2 + 0.8);
-      group.add(awning);
+      // Floor dividers on facade
+      for (let f = 1; f < floors; f++) {
+        const divider = new THREE.Mesh(
+          new THREE.BoxGeometry(w + 0.1, 0.15, 0.1),
+          new THREE.MeshStandardMaterial({ color: 0x666655 })
+        );
+        divider.position.set(0, f * floorH, side > 0 ? -d / 2 - 0.05 : d / 2 + 0.05);
+        group.add(divider);
+      }
 
-      // Sign above awning
-      const signGeom = new THREE.BoxGeometry(3.5, 0.8, 0.15);
-      const signMat = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
-      const sign = new THREE.Mesh(signGeom, signMat);
-      sign.position.set(0, 4.2, side > 0 ? -d / 2 - 0.1 : d / 2 + 0.1);
-      group.add(sign);
-
-      // Second floor with windows
-      const upper = new THREE.Mesh(
-        new THREE.BoxGeometry(w, 4, d),
-        new THREE.MeshStandardMaterial({ color: 0x9C6644 })
+      // Front door
+      const door = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0x2a1a0a })
       );
-      upper.position.set(0, h + 2, 0);
-      upper.castShadow = true;
-      group.add(upper);
-      addWindows(group, w, 4, d, h, side);
+      door.position.set(0, 1.1, side > 0 ? -d / 2 - 0.02 : d / 2 + 0.02);
+      if (side < 0) door.rotation.y = Math.PI;
+      group.add(door);
+
+      // Front steps
+      for (let s = 0; s < 3; s++) {
+        const step = new THREE.Mesh(
+          new THREE.BoxGeometry(1.8, 0.15, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0x999988 })
+        );
+        step.position.set(0, 0.08 + s * 0.15, side > 0 ? -d / 2 - 0.2 - s * 0.4 : d / 2 + 0.2 + s * 0.4);
+        group.add(step);
+      }
+
+      // Fire escape on some
+      if (Math.random() > 0.5) {
+        const escapeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        for (let f = 1; f <= floors; f++) {
+          const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(1.5, 0.05, 0.8),
+            escapeMat
+          );
+          platform.position.set(w / 2 * 0.6, f * floorH - 0.5, side > 0 ? -d / 2 - 0.4 : d / 2 + 0.4);
+          group.add(platform);
+        }
+      }
 
       group.position.set(x + side * (w / 2 + 0.5), 0, z);
       scene.add(group);
@@ -322,45 +398,12 @@ export default function Game() {
       sign.position.set(0, h + 0.5, side > 0 ? -d / 2 - 0.06 : d / 2 + 0.06);
       group.add(sign);
 
-      group.position.set(x + side * (w / 2 + 0.5), 0, z);
-      scene.add(group);
-      return { w, d };
-    }
-
-    function createBrownstone(x: number, z: number, side: number) {
-      const group = new THREE.Group();
-      const w = 5 + Math.random() * 2;
-      const h = 9 + Math.random() * 4;
-      const d = 7;
-
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({
-          color: brickColors[Math.floor(Math.random() * brickColors.length)]
-        })
-      );
-      body.position.set(0, h / 2, 0);
-      body.castShadow = true;
-      group.add(body);
-
-      addWindows(group, w, h, d, 0, side);
-
-      // Front steps
-      for (let s = 0; s < 3; s++) {
-        const step = new THREE.Mesh(
-          new THREE.BoxGeometry(1.5, 0.2, 0.5),
-          new THREE.MeshStandardMaterial({ color: 0x999999 })
-        );
-        step.position.set(0, 0.1 + s * 0.2, side > 0 ? -d / 2 - 0.3 - s * 0.5 : d / 2 + 0.3 + s * 0.5);
-        group.add(step);
-      }
-
-      // Door
+      // Side door
       const door = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.9, 2),
-        new THREE.MeshStandardMaterial({ color: 0x2a1a0a })
+        new THREE.PlaneGeometry(0.8, 1.8),
+        new THREE.MeshStandardMaterial({ color: 0x225533 })
       );
-      door.position.set(0, 1.6, side > 0 ? -d / 2 - 0.02 : d / 2 + 0.02);
+      door.position.set(w / 2 - 0.6, 0.9, side > 0 ? -d / 2 - 0.02 : d / 2 + 0.02);
       if (side < 0) door.rotation.y = Math.PI;
       group.add(door);
 
@@ -369,73 +412,309 @@ export default function Game() {
       return { w, d };
     }
 
-    function createShop(x: number, z: number, side: number) {
-      const group = new THREE.Group();
-      const w = 5;
-      const h = 4.5;
-      const d = 5;
-      const shopColors = [0x2266aa, 0x22aa66, 0xaa6622, 0x8822aa, 0xaa2244];
 
+    // Sears Tower (Willis Tower) — iconic stepped design with twin antennas
+    function createSearsTower(x: number, z: number, side: number) {
+      const group = new THREE.Group();
+      const towerColor = 0x1a1a1a;
+      const glassColor = 0x223344;
+      const w = 7;
+      const d = 7;
+
+      // Main base (all sections start here)
+      const baseH = 30;
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(w, baseH, d),
+        new THREE.MeshStandardMaterial({ color: towerColor })
+      );
+      base.position.set(0, baseH / 2, 0);
+      base.castShadow = true;
+      group.add(base);
+
+      // Second tier — two sections step back
+      const t2H = 12;
+      const t2 = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.75, t2H, d * 0.75),
+        new THREE.MeshStandardMaterial({ color: towerColor })
+      );
+      t2.position.set(0, baseH + t2H / 2, 0);
+      t2.castShadow = true;
+      group.add(t2);
+
+      // Third tier — narrower
+      const t3H = 10;
+      const t3 = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.5, t3H, d * 0.5),
+        new THREE.MeshStandardMaterial({ color: towerColor })
+      );
+      t3.position.set(0, baseH + t2H + t3H / 2, 0);
+      t3.castShadow = true;
+      group.add(t3);
+
+      // Top section
+      const t4H = 6;
+      const t4 = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.3, t4H, d * 0.3),
+        new THREE.MeshStandardMaterial({ color: towerColor })
+      );
+      t4.position.set(0, baseH + t2H + t3H + t4H / 2, 0);
+      t4.castShadow = true;
+      group.add(t4);
+
+      const totalH = baseH + t2H + t3H + t4H;
+
+      // Twin antennas
+      const antennaMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+      for (const ax of [-0.5, 0.5]) {
+        const antenna = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.08, 12, 6),
+          antennaMat
+        );
+        antenna.position.set(ax, totalH + 6, 0);
+        group.add(antenna);
+      }
+
+      // Glass windows on all tiers (road-facing side)
+      const tiers = [
+        { h: baseH, w: w, yBase: 0 },
+        { h: t2H, w: w * 0.75, yBase: baseH },
+        { h: t3H, w: w * 0.5, yBase: baseH + t2H },
+      ];
+      const winMat = new THREE.MeshStandardMaterial({
+        color: glassColor,
+        emissive: 0x112233,
+        emissiveIntensity: 0.2,
+      });
+      for (const tier of tiers) {
+        const rows = Math.floor(tier.h / 2);
+        const cols = Math.floor(tier.w / 1.2);
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const win = new THREE.Mesh(
+              new THREE.PlaneGeometry(0.8, 1.4),
+              winMat
+            );
+            const wx = -tier.w / 2 + 0.6 + c * (tier.w / cols);
+            const wy = tier.yBase + 1.5 + r * 2;
+            win.position.set(wx, wy, side > 0 ? -d / 2 - 0.01 : d / 2 + 0.01);
+            if (side < 0) win.rotation.y = Math.PI;
+            group.add(win);
+          }
+        }
+      }
+
+      // White light on top
+      const topLight = new THREE.PointLight(0xff3333, 2, 20);
+      topLight.position.set(0, totalH + 12.5, 0);
+      group.add(topLight);
+      const topBulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 6, 6),
+        new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 1 })
+      );
+      topBulb.position.set(0, totalH + 12.5, 0);
+      group.add(topBulb);
+
+      group.position.set(x + side * (w / 2 + 0.5), 0, z);
+      scene.add(group);
+    }
+
+    // Place Sears Tower prominently on the right side
+    createSearsTower(11, -60, 1);
+
+    // ---- The Bean (Cloud Gate) in Millennium Park ----
+    const beanZ = -30;
+    const beanX = -12;
+
+    // Plaza ground
+    const plazaGeom = new THREE.PlaneGeometry(22, 28);
+    const plazaMat = new THREE.MeshStandardMaterial({ color: 0xbbbbaa });
+    const plaza = new THREE.Mesh(plazaGeom, plazaMat);
+    plaza.rotation.x = -Math.PI / 2;
+    plaza.position.set(beanX, 0.02, beanZ);
+    plaza.receiveShadow = true;
+    scene.add(plaza);
+
+    // The Bean — squashed reflective ellipsoid
+    const beanGroup = new THREE.Group();
+    const beanBody = new THREE.Mesh(
+      new THREE.SphereGeometry(5, 32, 24, 0, Math.PI * 2, 0, Math.PI),
+      new THREE.MeshPhongMaterial({
+        color: 0xeeeeee,
+        specular: 0xffffff,
+        shininess: 200,
+        reflectivity: 1.0,
+      })
+    );
+    beanBody.scale.set(1.0, 0.55, 0.7);
+    beanBody.position.set(0, 3.5, 0);
+    beanBody.castShadow = true;
+    beanGroup.add(beanBody);
+
+    // Underside arch (concave opening)
+    const archGeom = new THREE.SphereGeometry(3, 24, 16, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
+    const archMat = new THREE.MeshStandardMaterial({
+      color: 0xcccccc,
+      metalness: 1.0,
+      roughness: 0.1,
+      side: THREE.BackSide,
+    });
+    const arch = new THREE.Mesh(archGeom, archMat);
+    arch.scale.set(1.0, 0.5, 0.7);
+    arch.position.set(0, 0.5, 0);
+    beanGroup.add(arch);
+
+    beanGroup.position.set(beanX, 0, beanZ);
+    scene.add(beanGroup);
+
+    // Small trees around the plaza
+    for (const [tx, tz] of [[-10, -6], [-10, 6], [-26, -6], [-26, 6]]) {
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.15, 0.18, 2.5, 6),
+        new THREE.MeshStandardMaterial({ color: 0x5a3a1a })
+      );
+      trunk.position.set(beanX + (tx - beanX) * 0.3 + tx * 0.05, 1.25, beanZ + tz);
+      scene.add(trunk);
+      const canopy = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0x2d7b2d })
+      );
+      canopy.position.set(trunk.position.x, 3.2, trunk.position.z);
+      canopy.castShadow = true;
+      scene.add(canopy);
+    }
+
+    // ---- Chicago Hot Dog Shop (directly left of biker) ----
+    function createHotDogShop(x: number, z: number, side: number) {
+      const group = new THREE.Group();
+      const w = 6;
+      const h = 4;
+      const d = 5;
+
+      // Building body — bright yellow
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
-        new THREE.MeshStandardMaterial({
-          color: stoneColors[Math.floor(Math.random() * stoneColors.length)]
-        })
+        new THREE.MeshStandardMaterial({ color: 0xffdd00 })
       );
       body.position.set(0, h / 2, 0);
       body.castShadow = true;
       group.add(body);
 
-      // Storefront window
-      const storeWin = new THREE.Mesh(
-        new THREE.PlaneGeometry(w - 1, 2.5),
-        new THREE.MeshStandardMaterial({ color: 0x99ccdd, transparent: true, opacity: 0.5 })
+      // Red roof trim
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.3, 0.3, d + 0.3),
+        new THREE.MeshStandardMaterial({ color: 0xcc0000 })
       );
-      storeWin.position.set(0, 2, side > 0 ? -d / 2 - 0.01 : d / 2 + 0.01);
-      if (side < 0) storeWin.rotation.y = Math.PI;
-      group.add(storeWin);
+      roof.position.set(0, h, 0);
+      group.add(roof);
 
-      // Awning
+      // Big front window
+      const frontWin = new THREE.Mesh(
+        new THREE.PlaneGeometry(w - 1.5, 2),
+        new THREE.MeshStandardMaterial({ color: 0x88ccdd, transparent: true, opacity: 0.5 })
+      );
+      frontWin.position.set(0, 2.2, side > 0 ? -d / 2 - 0.01 : d / 2 + 0.01);
+      if (side < 0) frontWin.rotation.y = Math.PI;
+      group.add(frontWin);
+
+      // Red & white striped awning
       const awning = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.3, 0.12, 1.2),
-        new THREE.MeshStandardMaterial({
-          color: shopColors[Math.floor(Math.random() * shopColors.length)]
-        })
+        new THREE.BoxGeometry(w + 0.5, 0.12, 1.5),
+        new THREE.MeshStandardMaterial({ color: 0xcc0000 })
       );
-      awning.position.set(0, 3.8, side > 0 ? -d / 2 - 0.6 : d / 2 + 0.6);
+      awning.position.set(0, 3.5, side > 0 ? -d / 2 - 0.8 : d / 2 + 0.8);
       group.add(awning);
-
-      // Upper floors
-      const upperH = 4 + Math.random() * 6;
-      const upper = new THREE.Mesh(
-        new THREE.BoxGeometry(w, upperH, d),
-        new THREE.MeshStandardMaterial({
-          color: brickColors[Math.floor(Math.random() * brickColors.length)]
-        })
+      const awningStripe = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.5, 0.13, 0.4),
+        new THREE.MeshStandardMaterial({ color: 0xffffff })
       );
-      upper.position.set(0, h + upperH / 2, 0);
-      upper.castShadow = true;
-      group.add(upper);
-      addWindows(group, w, upperH, d, h, side);
+      awningStripe.position.set(0, 3.52, side > 0 ? -d / 2 - 0.8 : d / 2 + 0.8);
+      group.add(awningStripe);
+
+      // Sign board
+      const sign = new THREE.Mesh(
+        new THREE.BoxGeometry(4, 1, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0xcc0000 })
+      );
+      sign.position.set(0, h + 0.8, side > 0 ? -d / 2 - 0.1 : d / 2 + 0.1);
+      group.add(sign);
+
+      // Giant hot dog on roof
+      // Bun
+      const bunGeom = new THREE.CapsuleGeometry(0.5, 2.5, 8, 12);
+      const bun = new THREE.Mesh(
+        bunGeom,
+        new THREE.MeshStandardMaterial({ color: 0xd4a04a })
+      );
+      bun.rotation.z = Math.PI / 2;
+      bun.position.set(0, h + 2.2, 0);
+      group.add(bun);
+
+      // Sausage
+      const sausage = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.35, 2.8, 8, 12),
+        new THREE.MeshStandardMaterial({ color: 0x8B2500 })
+      );
+      sausage.rotation.z = Math.PI / 2;
+      sausage.position.set(0, h + 2.5, 0);
+      group.add(sausage);
+
+      // Mustard zig-zag (simple yellow strip)
+      const mustard = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.08, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffdd00, emissiveIntensity: 0.3 })
+      );
+      mustard.position.set(0, h + 2.7, 0.1);
+      group.add(mustard);
+
+      // Relish (green strip)
+      const relish = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.08, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0x22aa22 })
+      );
+      relish.position.set(0, h + 2.65, -0.1);
+      group.add(relish);
+
+      // Front door
+      const door = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.9, 2),
+        new THREE.MeshStandardMaterial({ color: 0x661100 })
+      );
+      door.position.set(-w / 2 + 0.7, 1, side > 0 ? -d / 2 - 0.02 : d / 2 + 0.02);
+      if (side < 0) door.rotation.y = Math.PI;
+      group.add(door);
 
       group.position.set(x + side * (w / 2 + 0.5), 0, z);
       scene.add(group);
       return { w, d };
     }
 
-    // Generate the Chicago streetscape
-    const buildingTypes = [createTallBuilding, createRestaurant, createItalianIceStand, createBrownstone, createShop];
+    // Place hot dog shop directly to the left of the biker's start
+    createHotDogShop(-11, 3, -1);
+
+    // Generate the Chicago streetscape (skip bean plaza zone on left side)
+    const beanZoneMin = beanZ - 18;
+    const beanZoneMax = beanZ + 18;
+    const buildingTypes = [createHotDogShop, createItalianIceStand, createApartment, createSkyscraper];
     for (const side of [-1, 1]) {
       let z = 5;
       while (z > -250) {
-        // Weight toward shops/brownstones with occasional special buildings
+        // Skip the bean plaza zone on the left side
+        if (side === -1 && z < beanZoneMax && z > beanZoneMin) {
+          z = beanZoneMin - 1;
+          continue;
+        }
+        // Skip hot dog shop zone on the left side (manually placed one)
+        if (side === -1 && z > -3 && z < 8) {
+          z = -4;
+          continue;
+        }
+
         const r = Math.random();
         let type: number;
-        if (r < 0.25) type = 0; // tall building
-        else if (r < 0.35) type = 1; // restaurant
-        else if (r < 0.42) type = 2; // italian ice
-        else if (r < 0.65) type = 3; // brownstone
-        else type = 4; // shop
+        if (r < 0.15) type = 0;      // hot dog shop
+        else if (r < 0.30) type = 1;  // italian ice
+        else if (r < 0.60) type = 2;  // 3-story apartment
+        else type = 3;                 // skyscraper
 
         const baseX = side > 0 ? 11 : -11;
         const result = buildingTypes[type](baseX, z, side);
@@ -576,7 +855,7 @@ export default function Game() {
     }
 
     // Spawn pedestrians on both sidewalks
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 20; i++) {
       const side = Math.random() > 0.5 ? 1 : -1;
       const baseX = side * (8 + Math.random() * 2);
       const z = 10 - Math.random() * 220;
@@ -634,16 +913,22 @@ export default function Game() {
     const spriteH = 3;
     const spriteGeom = new THREE.PlaneGeometry(spriteW, spriteH);
 
-    // Stack multiple planes to give thickness
-    const numLayers = 50;
-    const layerSpacing = 0.004;
-    for (let i = 0; i < numLayers; i++) {
-      const layer = new THREE.Mesh(spriteGeom, spriteMat);
-      layer.castShadow = true;
-      layer.rotation.y = Math.PI / 2;
-      layer.position.x = (i - (numLayers - 1) / 2) * layerSpacing;
-      biker.add(layer);
+    // Stack instanced planes for thickness (1 draw call)
+    const bikerLayers = 50;
+    const bikerSpacing = 0.004;
+    const bikerInstanced = new THREE.InstancedMesh(spriteGeom, spriteMat, bikerLayers);
+    bikerInstanced.castShadow = true;
+    const bikerMatrix = new THREE.Matrix4();
+    const bikerRotMatrix = new THREE.Matrix4().makeRotationY(Math.PI / 2);
+    for (let i = 0; i < bikerLayers; i++) {
+      const offset = (i - (bikerLayers - 1) / 2) * bikerSpacing;
+      bikerMatrix.identity().setPosition(offset, 0, 0).multiply(bikerRotMatrix);
+      // Combine: translate then rotate
+      const m = new THREE.Matrix4().makeTranslation(offset, 0, 0);
+      m.multiply(bikerRotMatrix);
+      bikerInstanced.setMatrixAt(i, m);
     }
+    biker.add(bikerInstanced);
 
     biker.position.set(0, 1.5, 0);
     scene.add(biker);
@@ -683,31 +968,37 @@ export default function Game() {
       alphaTest: 0.5,
     });
 
+    // Pre-build instanced geometries for vehicles (1 draw call each)
+    const busGeom = new THREE.PlaneGeometry(6, 3);
+    const carGeom = new THREE.PlaneGeometry(5.5, 2.5);
+    const vLayers = 240;
+    const vSpacing = 0.004;
+    const rotY = new THREE.Matrix4().makeRotationY(Math.PI / 2);
+
     function createVehicle(type: "bus" | "car", direction: "oncoming" | "samedir"): Vehicle {
       const mesh = new THREE.Group();
       const isBus = type === "bus";
-      const vW = isBus ? 6 : 5.5;
       const vH = isBus ? 3 : 2.5;
       const mat = isBus ? busMat : carMat;
-      const geom = new THREE.PlaneGeometry(vW, vH);
-      const numLayers = 240;
-      const spacing = 0.004;
+      const geom = isBus ? busGeom : carGeom;
 
-      for (let i = 0; i < numLayers; i++) {
-        const layer = new THREE.Mesh(geom, mat);
-        layer.castShadow = true;
-        layer.rotation.y = Math.PI / 2;
-        layer.position.x = (i - (numLayers - 1) / 2) * spacing;
-        mesh.add(layer);
+      const instanced = new THREE.InstancedMesh(geom, mat, vLayers);
+      instanced.castShadow = true;
+      for (let i = 0; i < vLayers; i++) {
+        const offset = (i - (vLayers - 1) / 2) * vSpacing;
+        const m = new THREE.Matrix4().makeTranslation(offset, 0, 0);
+        m.multiply(rotY);
+        instanced.setMatrixAt(i, m);
       }
+      mesh.add(instanced);
 
       const lanesForDir = direction === "oncoming" ? oncomingLanes : sameDirLanes;
       const lane = lanesForDir[Math.floor(Math.random() * lanesForDir.length)];
 
       // Oncoming (left lanes) = toward camera (+z), same dir (right lanes) = away from camera (-z)
       const speed = direction === "oncoming"
-        ? 0.7 + Math.random() * 0.3
-        : -(0.4 + Math.random() * 0.2);
+        ? 0.4 + Math.random() * 0.2
+        : -(0.25 + Math.random() * 0.15);
 
       // Oncoming faces toward camera, same-dir faces away — swap the flip
       if (direction === "samedir") {
@@ -755,7 +1046,7 @@ export default function Game() {
       roughness: 0.2,
     });
     const orbLanes = [-4.5, -1.5, 0, 1.5, 4.5];
-    const orbSpeed = 0.5;
+    const orbSpeed = 0.3;
 
     function spawnOrb(): Orb {
       const mesh = new THREE.Mesh(orbGeom, orbMat);
