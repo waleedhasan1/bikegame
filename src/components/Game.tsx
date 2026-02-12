@@ -108,6 +108,20 @@ export default function Game() {
       scene.add(sidewalk);
     }
 
+    // Sidewalk panel lines (concrete joints)
+    const jointMat = new THREE.MeshStandardMaterial({ color: 0x9a9488 });
+    for (let z = 20; z > -250; z -= 3) {
+      for (const side of [-9, 9]) {
+        const joint = new THREE.Mesh(
+          new THREE.PlaneGeometry(4, 0.06),
+          jointMat
+        );
+        joint.rotation.x = -Math.PI / 2;
+        joint.position.set(side, 0.21, z);
+        scene.add(joint);
+      }
+    }
+
     // ---- Curbs ----
     const curbMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
     for (const side of [-7, 7]) {
@@ -763,6 +777,46 @@ export default function Game() {
           globe.position.set(side + offset, 5.3, z);
           scene.add(globe);
         }
+      }
+    }
+
+    // ---- Parking meters ----
+    const meterPoleMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+    const meterHeadMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+    const meterFaceMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    const meterSlotMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+    for (let z = -3; z > -200; z -= 6 + Math.random() * 4) {
+      for (const side of [-7.8, 7.8]) {
+        if (Math.random() > 0.7) continue;
+        // Pole
+        const pole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6),
+          meterPoleMat
+        );
+        pole.position.set(side, 0.55, z);
+        scene.add(pole);
+        // Head (the meter box)
+        const head = new THREE.Mesh(
+          new THREE.BoxGeometry(0.22, 0.3, 0.15),
+          meterHeadMat
+        );
+        head.position.set(side, 1.2, z);
+        scene.add(head);
+        // Face / display
+        const face = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.15, 0.12),
+          meterFaceMat
+        );
+        face.position.set(side, 1.25, side > 0 ? z - 0.076 : z + 0.076);
+        if (side < 0) face.rotation.y = Math.PI;
+        scene.add(face);
+        // Coin slot on top
+        const slot = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, 0.02, 0.06),
+          meterSlotMat
+        );
+        slot.position.set(side, 1.36, z);
+        scene.add(slot);
       }
     }
 
