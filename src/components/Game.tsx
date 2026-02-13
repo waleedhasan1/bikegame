@@ -1234,7 +1234,7 @@ export default function Game() {
           explosionTimer--;
           if (explosionTimer === 0) {
             gameOverDiv.style.display = "block";
-            gameOverDiv.innerHTML = `GAME OVER<br><span style="font-size:24px">Score: ${score}</span><br><button id="restartBtn" style="margin-top:16px;padding:14px 40px;font-size:22px;font-family:monospace;font-weight:bold;background:#fff;color:#111;border:none;border-radius:12px;cursor:pointer;">RESTART</button>`;
+            gameOverDiv.innerHTML = `FREE PALESTINE<br>FUCK THE POLICE<br>FUCK ICE<br>FUCK ISRAEL<br>FUCK THE UNITED STATES<br><span style="font-size:20px;margin-top:8px;display:inline-block;">I am tim bargo and I approve this message</span><br><span style="font-size:24px">Score: ${score}</span><br><button id="restartBtn" style="margin-top:16px;padding:14px 40px;font-size:22px;font-family:monospace;font-weight:bold;background:#fff;color:#111;border:none;border-radius:12px;cursor:pointer;">RESTART</button>`;
             document.getElementById("restartBtn")?.addEventListener("click", () => restart());
             document.getElementById("restartBtn")?.addEventListener("touchstart", (e) => { e.stopPropagation(); restart(); });
           }
